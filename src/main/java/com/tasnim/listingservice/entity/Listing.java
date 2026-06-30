@@ -1,6 +1,6 @@
 package com.tasnim.listingservice.entity;
 
-import com.tasnim.listingservice.enums.Status;
+import com.tasnim.listingservice.enums.ListingStatus;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -21,7 +21,7 @@ public class Listing {
     private long sellerId;
     private double startingPrice;
     private double reservePrice;
-    private Status status;
+    private ListingStatus status;
     private Instant auctionStartTime;
     private Instant auctionEndTime;
     private Instant createdAt;
