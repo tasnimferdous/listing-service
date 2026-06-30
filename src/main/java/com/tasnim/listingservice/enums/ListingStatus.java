@@ -1,6 +1,6 @@
 package com.tasnim.listingservice.enums;
 
-public enum Status {
+public enum ListingStatus {
     DRAFT,
     PENDING_APPROVAL,
     SCHEDULED,
