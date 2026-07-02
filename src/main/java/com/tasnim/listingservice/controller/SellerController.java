@@ -1,6 +1,7 @@
 package com.tasnim.listingservice.controller;
 
-import com.tasnim.listingservice.dtos.request.ListingRequest;
+import com.tasnim.listingservice.dtos.request.ListingCreateRequest;
+import com.tasnim.listingservice.dtos.request.ListingUpdateRequest;
 import com.tasnim.listingservice.dtos.response.CommonResponse;
 import com.tasnim.listingservice.dtos.response.ListingDetailsResponse;
 import com.tasnim.listingservice.dtos.response.ListingResponse;
@@ -21,7 +22,7 @@ public class SellerController {
     }
 
     @PostMapping
-    public CommonResponse<ListingResponse> createListing(@RequestBody @Valid ListingRequest request){
+    public CommonResponse<ListingResponse> createListing(@RequestBody @Valid ListingCreateRequest request){
         ListingResponse response = listingService.createListing(request);
         return CommonResponse.<ListingResponse>builder()
                 .success(true)
@@ -33,7 +34,7 @@ public class SellerController {
     @PutMapping("/{id}")
     public CommonResponse<ListingResponse> updateListing(
             @PathVariable Long id,
-            @RequestBody @Valid ListingRequest request)
+            @RequestBody @Valid ListingUpdateRequest request)
     {
         ListingResponse response = listingService.updateListing(id, request);
         return CommonResponse.<ListingResponse>builder()
