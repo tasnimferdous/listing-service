@@ -65,7 +65,7 @@ public class SellerController {
 
     @GetMapping("/{id}")
     public CommonResponse<ListingDetailsResponse> getListing(@PathVariable Long id) {
-        ListingDetailsResponse response = listingService.getListingById(id);
+        ListingDetailsResponse response = listingService.getListingDetails(id);
         return CommonResponse.<ListingDetailsResponse>builder()
                 .success(true)
                 .content(response)

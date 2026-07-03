@@ -6,6 +6,7 @@ import com.tasnim.listingservice.dtos.response.ListingDetailsResponse;
 import com.tasnim.listingservice.dtos.response.ListingResponse;
 import com.tasnim.listingservice.entity.Listing;
 import com.tasnim.listingservice.enums.ListingStatus;
+import com.tasnim.listingservice.exception.BusinessException;
 import com.tasnim.listingservice.exception.ResourceNotFoundException;
 import com.tasnim.listingservice.repository.CategoryRepository;
 import com.tasnim.listingservice.repository.ListingRepository;
@@ -14,6 +15,7 @@ import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 
@@ -39,13 +41,10 @@ public class ListingServiceImpl implements ListingService {
         listing = listingRepository.save(listing);
 
         storeListingImages(request.getImageUrls(), listing.getId());
+
         log.info("Listing created successfully. id={}", listing.getId());
 
-        return ListingResponse.builder()
-                .id(listing.getId())
-                .title(listing.getTitle())
-                .status(listing.getStatus())
-                .build();
+        return mapToListingResponse(listing);
     }
 
     //Need to work on it
@@ -79,18 +78,16 @@ public class ListingServiceImpl implements ListingService {
     public ListingResponse updateListing(Long listingId, ListingUpdateRequest request) {
         log.info("Updating listing. id={}", listingId);
 
+        if(request.getCategoryId() != null) {
+            validateCategory(request.getCategoryId());
+        }
         Listing listing = getListing(listingId);
-        validateCategory(request.getCategoryId());
         updateListingFields(listing, request);
         listing = listingRepository.save(listing);
 
         log.info("Listing updated successfully. id={}", listingId);
 
-        return ListingResponse.builder()
-                .id(listing.getId())
-                .title(listing.getTitle())
-                .status(listing.getStatus())
-                .build();
+        return mapToListingResponse(listing);
     }
 
     private void updateListingFields(Listing listing, ListingUpdateRequest request) {
@@ -113,16 +110,71 @@ public class ListingServiceImpl implements ListingService {
 
     @Override
     public void deleteListing(Long listingId) {
+        log.info("Deleting listing. id={}", listingId);
 
+        Listing listing = getListing(listingId);
+        validateDeletionAllowed(listing);
+        //delete related images
+        listingRepository.delete(listing);
+
+        log.info("Listing deleted successfully. id={}", listingId);
+    }
+
+    private void validateDeletionAllowed(Listing listing) {
+        if (ListingStatus.ACTIVE.equals(listing.getStatus())) {
+            throw new BusinessException(
+                    "Active listing can't be deleted");
+        }
     }
 
     @Override
+    @Transactional(readOnly = true)
     public List<ListingResponse> getMyListings() {
-        return List.of();
+        Long sellerId = getCurrentSellerId();
+
+        log.info("Fetching listings for seller={}", sellerId);
+
+        return listingRepository.findBySellerId(sellerId)
+                .stream()
+                .map(this::mapToListingResponse)
+                .toList();
+    }
+
+    private ListingResponse mapToListingResponse(Listing listing) {
+        return ListingResponse.builder()
+                .id(listing.getId())
+                .title(listing.getTitle())
+                .status(listing.getStatus())
+                .build();
+    }
+
+    private Long getCurrentSellerId() {
+        // Implementation for getting current seller ID from JWT or other source
+        return null;
     }
 
     @Override
-    public ListingDetailsResponse getListingById(Long listingId) {
-        return null;
+    @Transactional(readOnly = true)
+    public ListingDetailsResponse getListingDetails(Long listingId) {
+        log.info("Fetching listing details. id={}", listingId);
+
+        Listing listing = getListing(listingId);
+
+        return mapToListingDetailsResponse(listing);
+    }
+
+    private ListingDetailsResponse mapToListingDetailsResponse(Listing listing) {
+        //get and set images
+        return ListingDetailsResponse.builder()
+                .id(listing.getId())
+                .title(listing.getTitle())
+                .description(listing.getDescription())
+                .condition(listing.getCondition())
+                .categoryId(listing.getCategory())
+                .startingPrice(listing.getStartingPrice())
+                .reservePrice(listing.getReservePrice())
+                .buyNowPrice(listing.getBuyNowPrice())
+                .status(listing.getStatus())
+                .build();
     }
 }
