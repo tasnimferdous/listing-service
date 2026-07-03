@@ -4,7 +4,7 @@ public enum ListingStatus {
     DRAFT,
     PENDING_APPROVAL,
     SCHEDULED,
-    LIVE,
+    ACTIVE,
     ENDED,
     CANCELLED
 }

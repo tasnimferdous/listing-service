@@ -16,5 +16,5 @@ public interface ListingService {
 
     List<ListingResponse> getMyListings();
 
-    ListingDetailsResponse getListingById(Long listingId);
+    ListingDetailsResponse getListingDetails(Long listingId);
 }

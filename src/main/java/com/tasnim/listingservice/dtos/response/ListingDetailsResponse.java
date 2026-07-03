@@ -13,9 +13,13 @@ import java.util.List;
 @NoArgsConstructor
 public class ListingDetailsResponse {
     private Long id;
+    private Long categoryId;
     private String title;
     private String description;
+    private String condition;
     private BigDecimal startingPrice;
+    private BigDecimal reservePrice;
+    private BigDecimal buyNowPrice;
     private ListingStatus status;
     private List<String> images;
 }
