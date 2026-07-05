@@ -1,18 +1,18 @@
 package com.tasnim.listingservice.service.impl;
 
+import com.tasnim.commonlibrary.exceptions.BusinessException;
+import com.tasnim.commonlibrary.exceptions.ForbiddenException;
+import com.tasnim.commonlibrary.exceptions.ResourceNotFoundException;
+import com.tasnim.commonlibrary.utils.SecurityUtil;
 import com.tasnim.listingservice.dtos.request.ListingCreateRequest;
 import com.tasnim.listingservice.dtos.request.ListingUpdateRequest;
 import com.tasnim.listingservice.dtos.response.ListingDetailsResponse;
 import com.tasnim.listingservice.dtos.response.ListingResponse;
 import com.tasnim.listingservice.entity.Listing;
 import com.tasnim.listingservice.enums.ListingStatus;
-import com.tasnim.listingservice.exception.BusinessException;
-import com.tasnim.listingservice.exception.ResourceNotFoundException;
 import com.tasnim.listingservice.repository.CategoryRepository;
 import com.tasnim.listingservice.repository.ListingRepository;
 import com.tasnim.listingservice.service.ListingService;
-import jakarta.validation.constraints.NotNull;
-import jakarta.validation.constraints.Size;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -23,6 +23,7 @@ import static com.tasnim.listingservice.utils.PublicUtil.isNullOrEmpty;
 
 @Slf4j
 @Service
+@Transactional
 public class ListingServiceImpl implements ListingService {
     private final ListingRepository listingRepository;
     private final CategoryRepository categoryRepository;
@@ -48,16 +49,15 @@ public class ListingServiceImpl implements ListingService {
     }
 
     //Need to work on it
-    private void storeListingImages(@Size(max = 10, message = "Maximum 10 images allowed") List<String> imageUrls, Long id) {
+    private void storeListingImages(List<String> imageUrls, Long id) {
 
     }
 
-    private void validateCategory(@NotNull(message = "Category is required") Long categoryId) {
-        categoryRepository.findById(categoryId)
-                .orElseThrow(() ->
-                        new ResourceNotFoundException(
-                                "Category not found with id: " + categoryId
-                        ));
+    private void validateCategory(Long categoryId) {
+        if (!categoryRepository.existsById(categoryId)) {
+            throw new ResourceNotFoundException(
+                    "Category not found with id: " + categoryId);
+        }
     }
 
     private Listing buildListing(ListingCreateRequest request) {
@@ -70,24 +70,38 @@ public class ListingServiceImpl implements ListingService {
                 .buyNowPrice(request.getBuyNowPrice())
                 .category(request.getCategoryId())
                 .status(ListingStatus.PENDING_APPROVAL)
-//                .sellerId()  //for later. need to get it from jwt
+                .sellerId(SecurityUtil.getCurrentUserId())
                 .build();
     }
 
     @Override
     public ListingResponse updateListing(Long listingId, ListingUpdateRequest request) {
-        log.info("Updating listing. id={}", listingId);
+        String sellerId = SecurityUtil.getCurrentUserId();
+        log.info("Updating listing. id={}, sellerId={}", listingId, sellerId);
 
-        if(request.getCategoryId() != null) {
-            validateCategory(request.getCategoryId());
-        }
         Listing listing = getListing(listingId);
+        validateListingEditable(request, listing,  sellerId);
         updateListingFields(listing, request);
         listing = listingRepository.save(listing);
 
         log.info("Listing updated successfully. id={}", listingId);
 
         return mapToListingResponse(listing);
+    }
+
+    private void validateListingEditable(ListingUpdateRequest request, Listing listing, String sellerId) {
+        validateStatus(listing);
+        validateOwnership(listing, sellerId);
+        if(request.getCategoryId() != null) {
+            validateCategory(request.getCategoryId());
+        }
+    }
+
+    private void validateOwnership(Listing listing, String sellerId) {
+        if (!listing.getSellerId().equals(sellerId)) {
+            throw new ForbiddenException(
+                    "You do not own this listing");
+        }
     }
 
     private void updateListingFields(Listing listing, ListingUpdateRequest request) {
@@ -110,27 +124,34 @@ public class ListingServiceImpl implements ListingService {
 
     @Override
     public void deleteListing(Long listingId) {
-        log.info("Deleting listing. id={}", listingId);
+        String sellerId = SecurityUtil.getCurrentUserId();
+        log.info("Deleting listing. id={}, sellerId={}", listingId, sellerId);
 
         Listing listing = getListing(listingId);
-        validateDeletionAllowed(listing);
+        validateListingDeletion(listing,  sellerId);
         //delete related images
         listingRepository.delete(listing);
 
         log.info("Listing deleted successfully. id={}", listingId);
     }
 
-    private void validateDeletionAllowed(Listing listing) {
-        if (ListingStatus.ACTIVE.equals(listing.getStatus())) {
+    private void validateListingDeletion(Listing listing, String sellerId) {
+        validateStatus(listing);
+        validateOwnership(listing, sellerId);
+    }
+
+    private void validateStatus(Listing listing) {
+        if (ListingStatus.ACTIVE.equals(listing.getStatus()) ||
+                ListingStatus.ENDED.equals(listing.getStatus())) {
             throw new BusinessException(
-                    "Active listing can't be deleted");
+                    "Listing cannot be updated or deleted in current status");
         }
     }
 
     @Override
     @Transactional(readOnly = true)
     public List<ListingResponse> getMyListings() {
-        Long sellerId = getCurrentSellerId();
+        String sellerId = SecurityUtil.getCurrentUserId();
 
         log.info("Fetching listings for seller={}", sellerId);
 
@@ -146,11 +167,6 @@ public class ListingServiceImpl implements ListingService {
                 .title(listing.getTitle())
                 .status(listing.getStatus())
                 .build();
-    }
-
-    private Long getCurrentSellerId() {
-        // Implementation for getting current seller ID from JWT or other source
-        return null;
     }
 
     @Override

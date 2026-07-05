@@ -8,5 +8,5 @@ import java.util.Collection;
 
 @Repository
 public interface ListingRepository extends JpaRepository<Listing, Long> {
-    Collection<Listing> findBySellerId(Long sellerId);
+    Collection<Listing> findBySellerId(String sellerId);
 }

@@ -1,12 +1,13 @@
 package com.tasnim.listingservice.controller;
 
+import com.tasnim.commonlibrary.model.CommonResponse;
 import com.tasnim.listingservice.dtos.request.ListingCreateRequest;
 import com.tasnim.listingservice.dtos.request.ListingUpdateRequest;
-import com.tasnim.listingservice.dtos.response.CommonResponse;
 import com.tasnim.listingservice.dtos.response.ListingDetailsResponse;
 import com.tasnim.listingservice.dtos.response.ListingResponse;
 import com.tasnim.listingservice.service.ListingService;
 import jakarta.validation.Valid;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -22,6 +23,7 @@ public class SellerController {
     }
 
     @PostMapping
+    @PreAuthorize("hasRole('SELLER')")
     public CommonResponse<ListingResponse> createListing(@RequestBody @Valid ListingCreateRequest request){
         ListingResponse response = listingService.createListing(request);
         return CommonResponse.<ListingResponse>builder()
@@ -32,6 +34,7 @@ public class SellerController {
     }
 
     @PutMapping("/{id}")
+    @PreAuthorize("hasRole('SELLER')")
     public CommonResponse<ListingResponse> updateListing(
             @PathVariable Long id,
             @RequestBody @Valid ListingUpdateRequest request)
@@ -45,6 +48,7 @@ public class SellerController {
     }
 
     @DeleteMapping("/{id}")
+    @PreAuthorize("hasRole('SELLER')")
     public CommonResponse<Void> deleteListing(@PathVariable Long id) {
         listingService.deleteListing(id);
         return CommonResponse.<Void>builder()
@@ -54,22 +58,13 @@ public class SellerController {
     }
 
     @GetMapping("/my-listings")
+    @PreAuthorize("hasRole('SELLER')")
     public CommonResponse<List<ListingResponse>> getMyListings() {
         List<ListingResponse> listings = listingService.getMyListings();
         return CommonResponse.<List<ListingResponse>>builder()
                 .success(true)
                 .content(listings)
                 .message("Listings retrieved successfully")
-                .build();
-    }
-
-    @GetMapping("/{id}")
-    public CommonResponse<ListingDetailsResponse> getListing(@PathVariable Long id) {
-        ListingDetailsResponse response = listingService.getListingDetails(id);
-        return CommonResponse.<ListingDetailsResponse>builder()
-                .success(true)
-                .content(response)
-                .message("Listing retrieved successfully")
                 .build();
     }
 }

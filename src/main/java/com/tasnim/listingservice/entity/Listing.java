@@ -22,7 +22,7 @@ public class Listing {
     private String description;
     private Long category;
     private String condition;
-    private Long sellerId;
+    private String sellerId;
     @Column(nullable = false, precision = 19, scale = 2)
     private BigDecimal startingPrice;
     @Column(precision = 19, scale = 2)
