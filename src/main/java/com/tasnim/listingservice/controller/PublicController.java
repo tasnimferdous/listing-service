@@ -1,6 +1,7 @@
 package com.tasnim.listingservice.controller;
 
 import com.tasnim.commonlibrary.model.CommonResponse;
+import com.tasnim.commonlibrary.utils.ResponseUtil;
 import com.tasnim.listingservice.dtos.response.ListingDetailsResponse;
 import com.tasnim.listingservice.service.ListingService;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -20,10 +21,6 @@ public class PublicController {
     @GetMapping("/{id}")
     public CommonResponse<ListingDetailsResponse> getListing(@PathVariable Long id) {
         ListingDetailsResponse response = listingService.getListingDetails(id);
-        return CommonResponse.<ListingDetailsResponse>builder()
-                .success(true)
-                .content(response)
-                .message("Listing retrieved successfully")
-                .build();
+        return ResponseUtil.success(response, "Listing retrieved successfully");
     }
 }
