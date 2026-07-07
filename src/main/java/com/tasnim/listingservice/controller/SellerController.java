@@ -1,9 +1,9 @@
 package com.tasnim.listingservice.controller;
 
 import com.tasnim.commonlibrary.model.CommonResponse;
+import com.tasnim.commonlibrary.utils.ResponseUtil;
 import com.tasnim.listingservice.dtos.request.ListingCreateRequest;
 import com.tasnim.listingservice.dtos.request.ListingUpdateRequest;
-import com.tasnim.listingservice.dtos.response.ListingDetailsResponse;
 import com.tasnim.listingservice.dtos.response.ListingResponse;
 import com.tasnim.listingservice.service.ListingService;
 import jakarta.validation.Valid;
@@ -26,11 +26,7 @@ public class SellerController {
     @PreAuthorize("hasRole('SELLER')")
     public CommonResponse<ListingResponse> createListing(@RequestBody @Valid ListingCreateRequest request){
         ListingResponse response = listingService.createListing(request);
-        return CommonResponse.<ListingResponse>builder()
-                .success(true)
-                .content(response)
-                .message("Listing created successfully")
-                .build();
+        return ResponseUtil.success(response, "Listing created successfully");
     }
 
     @PutMapping("/{id}")
@@ -40,31 +36,20 @@ public class SellerController {
             @RequestBody @Valid ListingUpdateRequest request)
     {
         ListingResponse response = listingService.updateListing(id, request);
-        return CommonResponse.<ListingResponse>builder()
-                .success(true)
-                .content(response)
-                .message("Listing updated successfully")
-                .build();
+        return ResponseUtil.success(response, "Listing updated successfully");
     }
 
     @DeleteMapping("/{id}")
     @PreAuthorize("hasRole('SELLER')")
     public CommonResponse<Void> deleteListing(@PathVariable Long id) {
         listingService.deleteListing(id);
-        return CommonResponse.<Void>builder()
-                .success(true)
-                .message("Listing deleted successfully")
-                .build();
+        return ResponseUtil.success("Listing deleted successfully");
     }
 
     @GetMapping("/my-listings")
     @PreAuthorize("hasRole('SELLER')")
     public CommonResponse<List<ListingResponse>> getMyListings() {
-        List<ListingResponse> listings = listingService.getMyListings();
-        return CommonResponse.<List<ListingResponse>>builder()
-                .success(true)
-                .content(listings)
-                .message("Listings retrieved successfully")
-                .build();
+        List<ListingResponse> responses = listingService.getMyListings();
+        return ResponseUtil.success(responses, "Listings retrieved successfully");
     }
 }
