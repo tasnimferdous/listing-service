@@ -2,8 +2,10 @@ package com.tasnim.listingservice.service.impl;
 
 import com.tasnim.commonlibrary.exceptions.BadRequestException;
 import com.tasnim.commonlibrary.exceptions.BusinessException;
+import com.tasnim.commonlibrary.utils.SecurityUtil;
 import com.tasnim.listingservice.service.FileService;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -11,14 +13,17 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.time.Instant;
 import java.util.List;
 import java.util.Set;
-import java.util.UUID;
 
 @Service
 @Slf4j
 public class FileServiceImpl implements FileService {
-    private static final long MAX_FILE_SIZE = 5 * 1024 * 1024;
+    @Value("${file.max-size:1024 * 1024}")
+    private long MAX_FILE_SIZE;
+    @Value("${file.max-uploads:2}")
+    private int MAX_UPLOADS;
     private static final Set<String> ALLOWED_TYPES =
             Set.of(
                     "image/jpeg",
@@ -31,8 +36,10 @@ public class FileServiceImpl implements FileService {
         log.info("Uploading {} image(s)", files == null ? 0 : files.size());
 
         validateFiles(files);
+        String userId = SecurityUtil.getCurrentUserId();
+
         List<String> urls = files.stream()
-                .map(this::uploadToStorage)
+                .map(file -> uploadToStorage(file, userId))
                 .toList();
 
         log.info("Successfully uploaded {} image(s)", urls.size());
@@ -40,9 +47,9 @@ public class FileServiceImpl implements FileService {
         return urls;
     }
 
-    private String uploadToStorage(MultipartFile file) {
+    private String uploadToStorage(MultipartFile file,  String userId) {
         try {
-            String fileName = UUID.randomUUID() + "-" + file.getOriginalFilename();
+            String fileName = getFileName(file, userId);
             Path uploadDir = Paths.get("uploads");
             Files.createDirectories(uploadDir);
             Path destination = uploadDir.resolve(fileName);
@@ -56,24 +63,26 @@ public class FileServiceImpl implements FileService {
         }
     }
 
+    private String getFileName(MultipartFile file, String userId) {
+        return userId + "_" +
+                Instant.now().toEpochMilli() + "_" +
+                file.getOriginalFilename();
+    }
+
     private void validateFiles(List<MultipartFile> files) {
         if (files == null || files.isEmpty()) {
             throw new BadRequestException(
                     "At least one image is required");
         }
-        if (files.size() > 10) {
+        if (files.size() > MAX_UPLOADS) {
             throw new BadRequestException(
-                    "Maximum 10 images allowed");
+                    "Maximum " + MAX_UPLOADS + " images allowed");
         }
 
         files.forEach(this::validateFile);
     }
 
     private void validateFile(MultipartFile file) {
-        if (file.isEmpty()) {
-            throw new BadRequestException(
-                    "File cannot be empty");
-        }
         if (file.getSize() > MAX_FILE_SIZE) {
             throw new BadRequestException(
                     "File size exceeds 5 MB");

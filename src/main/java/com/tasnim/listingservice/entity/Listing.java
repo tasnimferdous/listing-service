@@ -1,10 +1,7 @@
 package com.tasnim.listingservice.entity;
 
 import com.tasnim.listingservice.enums.ListingStatus;
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.PrePersist;
-import jakarta.persistence.PreUpdate;
+import jakarta.persistence.*;
 import lombok.*;
 
 import java.math.BigDecimal;
@@ -17,13 +14,15 @@ import java.time.Instant;
 @AllArgsConstructor
 @NoArgsConstructor
 public class Listing {
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
     private String title;
     private String description;
     private Long category;
     private String condition;
     private String sellerId;
-    @Column(nullable = false, precision = 19, scale = 2)
+    @Column(precision = 19, scale = 2)
     private BigDecimal startingPrice;
     @Column(precision = 19, scale = 2)
     private BigDecimal reservePrice;

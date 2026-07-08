@@ -9,14 +9,23 @@ import com.tasnim.listingservice.dtos.request.ListingUpdateRequest;
 import com.tasnim.listingservice.dtos.response.ListingDetailsResponse;
 import com.tasnim.listingservice.dtos.response.ListingResponse;
 import com.tasnim.listingservice.entity.Listing;
+import com.tasnim.listingservice.entity.ListingImage;
 import com.tasnim.listingservice.enums.ListingStatus;
 import com.tasnim.listingservice.repository.CategoryRepository;
+import com.tasnim.listingservice.repository.ListingImageRepository;
 import com.tasnim.listingservice.repository.ListingRepository;
 import com.tasnim.listingservice.service.ListingService;
+import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Size;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.util.ArrayList;
 import java.util.List;
 
 import static com.tasnim.listingservice.utils.PublicUtil.isNullOrEmpty;
@@ -27,10 +36,12 @@ import static com.tasnim.listingservice.utils.PublicUtil.isNullOrEmpty;
 public class ListingServiceImpl implements ListingService {
     private final ListingRepository listingRepository;
     private final CategoryRepository categoryRepository;
+    private final ListingImageRepository listingImageRepository;
 
-    public ListingServiceImpl(ListingRepository listingRepository, CategoryRepository categoryRepository) {
+    public ListingServiceImpl(ListingRepository listingRepository, CategoryRepository categoryRepository, ListingImageRepository listingImageRepository) {
         this.listingRepository = listingRepository;
         this.categoryRepository = categoryRepository;
+        this.listingImageRepository = listingImageRepository;
     }
 
     @Override
@@ -40,17 +51,27 @@ public class ListingServiceImpl implements ListingService {
         validateCategory(request.getCategoryId());
         Listing listing = buildListing(request);
         listing = listingRepository.save(listing);
-
         storeListingImages(request.getImageUrls(), listing.getId());
-
         log.info("Listing created successfully. id={}", listing.getId());
 
         return mapToListingResponse(listing);
     }
 
-    //Need to work on it
-    private void storeListingImages(List<String> imageUrls, Long id) {
+    private void storeListingImages(List<String> imageUrls, Long listingId) {
+        log.info("Storing listing image for listingId={}", listingId);
 
+        List<ListingImage> images = new ArrayList<>();
+        for (int i = 0; i < imageUrls.size(); i++) {
+            images.add(
+                    ListingImage.builder()
+                            .listingId(listingId)
+                            .imageUrl(imageUrls.get(i))
+                            .displayOrder(i + 1)
+                            .build()
+            );
+        }
+
+        listingImageRepository.saveAll(images);
     }
 
     private void validateCategory(Long categoryId) {
@@ -64,7 +85,7 @@ public class ListingServiceImpl implements ListingService {
         return Listing.builder()
                 .title(request.getTitle())
                 .description(request.getDescription())
-                .condition(request.getCondition())
+                .condition(request.getCondition().toString())
                 .startingPrice(request.getStartingPrice())
                 .reservePrice(request.getReservePrice())
                 .buyNowPrice(request.getBuyNowPrice())
@@ -82,11 +103,18 @@ public class ListingServiceImpl implements ListingService {
         Listing listing = getListing(listingId);
         validateListingEditable(request, listing,  sellerId);
         updateListingFields(listing, request);
+        updateListingImages(listingId, request.getImageUrls());
         listing = listingRepository.save(listing);
 
         log.info("Listing updated successfully. id={}", listingId);
 
         return mapToListingResponse(listing);
+    }
+
+    private void updateListingImages(Long listingId, List<String> imageUrls) {
+        if (imageUrls == null || imageUrls.isEmpty()) return;
+        deleteListingImages(listingId);
+        storeListingImages(imageUrls, listingId);
     }
 
     private void validateListingEditable(ListingUpdateRequest request, Listing listing, String sellerId) {
@@ -107,7 +135,7 @@ public class ListingServiceImpl implements ListingService {
     private void updateListingFields(Listing listing, ListingUpdateRequest request) {
         listing.setTitle(isNullOrEmpty(request.getTitle()) ? listing.getTitle() : request.getTitle());
         listing.setDescription(isNullOrEmpty(request.getDescription()) ? listing.getDescription() : request.getDescription());
-        listing.setCondition(isNullOrEmpty(request.getCondition()) ? listing.getCondition() : request.getCondition());
+        listing.setCondition(request.getCondition() == null ? listing.getCondition() : request.getCondition().toString());
         listing.setStartingPrice(request.getStartingPrice() == null ? listing.getStartingPrice() : request.getStartingPrice());
         listing.setReservePrice(request.getReservePrice() == null ? listing.getReservePrice() : request.getReservePrice());
         listing.setBuyNowPrice(request.getBuyNowPrice() == null ? listing.getBuyNowPrice() : request.getBuyNowPrice());
@@ -129,10 +157,35 @@ public class ListingServiceImpl implements ListingService {
 
         Listing listing = getListing(listingId);
         validateListingDeletion(listing,  sellerId);
-        //delete related images
+        deleteListingImages(listingId);
         listingRepository.delete(listing);
 
         log.info("Listing deleted successfully. id={}", listingId);
+    }
+
+    private void deleteListingImages(Long listingId) {
+        log.info("Deleting images for listingId={}", listingId);
+
+        List<ListingImage> images = listingImageRepository.findByListingId(listingId);
+        if (images == null || images.isEmpty())  return;
+        deletePhysicalImages(images);
+        listingImageRepository.deleteByListingId(listingId);
+
+        log.info("Images deleted for listingId={}", listingId);
+    }
+
+    private void deletePhysicalImages(List<ListingImage> images) {
+        for (ListingImage image : images) {
+            try {
+                String fileName = image.getImageUrl().replace("/uploads/", "");
+                Path filePath = Paths.get("uploads").resolve(fileName);
+                Files.deleteIfExists(filePath);
+            } catch (IOException ex) {
+                log.error(
+                        "Failed to delete image. url={}",
+                        image.getImageUrl(), ex);
+            }
+        }
     }
 
     private void validateListingDeletion(Listing listing, String sellerId) {
