@@ -15,8 +15,6 @@ import com.tasnim.listingservice.repository.CategoryRepository;
 import com.tasnim.listingservice.repository.ListingImageRepository;
 import com.tasnim.listingservice.repository.ListingRepository;
 import com.tasnim.listingservice.service.ListingService;
-import jakarta.validation.constraints.NotNull;
-import jakarta.validation.constraints.Size;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -85,7 +83,7 @@ public class ListingServiceImpl implements ListingService {
         return Listing.builder()
                 .title(request.getTitle())
                 .description(request.getDescription())
-                .condition(request.getCondition().toString())
+                .listingCondition(request.getCondition().toString())
                 .startingPrice(request.getStartingPrice())
                 .reservePrice(request.getReservePrice())
                 .buyNowPrice(request.getBuyNowPrice())
@@ -135,7 +133,7 @@ public class ListingServiceImpl implements ListingService {
     private void updateListingFields(Listing listing, ListingUpdateRequest request) {
         listing.setTitle(isNullOrEmpty(request.getTitle()) ? listing.getTitle() : request.getTitle());
         listing.setDescription(isNullOrEmpty(request.getDescription()) ? listing.getDescription() : request.getDescription());
-        listing.setCondition(request.getCondition() == null ? listing.getCondition() : request.getCondition().toString());
+        listing.setListingCondition(request.getCondition() == null ? listing.getListingCondition() : request.getCondition().toString());
         listing.setStartingPrice(request.getStartingPrice() == null ? listing.getStartingPrice() : request.getStartingPrice());
         listing.setReservePrice(request.getReservePrice() == null ? listing.getReservePrice() : request.getReservePrice());
         listing.setBuyNowPrice(request.getBuyNowPrice() == null ? listing.getBuyNowPrice() : request.getBuyNowPrice());
@@ -238,7 +236,7 @@ public class ListingServiceImpl implements ListingService {
                 .id(listing.getId())
                 .title(listing.getTitle())
                 .description(listing.getDescription())
-                .condition(listing.getCondition())
+                .condition(listing.getListingCondition())
                 .categoryId(listing.getCategory())
                 .startingPrice(listing.getStartingPrice())
                 .reservePrice(listing.getReservePrice())

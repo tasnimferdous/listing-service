@@ -20,7 +20,7 @@ import java.util.Set;
 @Service
 @Slf4j
 public class FileServiceImpl implements FileService {
-    @Value("${file.max-size:1024 * 1024}")
+    @Value("${file.max-size:1}")
     private long MAX_FILE_SIZE;
     @Value("${file.max-uploads:2}")
     private int MAX_UPLOADS;
@@ -83,7 +83,7 @@ public class FileServiceImpl implements FileService {
     }
 
     private void validateFile(MultipartFile file) {
-        if (file.getSize() > MAX_FILE_SIZE) {
+        if (file.getSize() > MAX_FILE_SIZE * 1024 * 1024) {
             throw new BadRequestException(
                     "File size exceeds 5 MB");
         }

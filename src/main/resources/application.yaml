@@ -34,5 +34,5 @@ jwt:
   secret-key: ThisIsASecretKeyForJwtTokenGeneration
 
 file:
-  max-size: 5 * 1024 * 1024
+  max-size: 5
   max-uploads: 10
