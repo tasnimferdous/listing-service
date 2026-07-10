@@ -30,12 +30,12 @@ public class ListingCreateRequest {
     @DecimalMin(value = "0.01", message = "Starting price must be greater than zero")
     private BigDecimal startingPrice;
 
-    @NotNull(message = "Starting price is required")
-    @DecimalMin(value = "0.01", message = "Starting price must be greater than zero")
+    @NotNull(message = "Reserve price is required")
+    @DecimalMin(value = "0.01", message = "Reserve price must be greater than zero")
     private BigDecimal reservePrice;
 
-    @NotNull(message = "Starting price is required")
-    @DecimalMin(value = "0.01", message = "Starting price must be greater than zero")
+    @NotNull(message = "Buy Now price is required")
+    @DecimalMin(value = "0.01", message = "Buy Now price must be greater than zero")
     private BigDecimal buyNowPrice;
 
     @NotNull(message = "Category is required")

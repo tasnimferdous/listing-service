@@ -26,10 +26,10 @@ public class ListingUpdateRequest {
     @DecimalMin(value = "0.01", message = "Starting price must be greater than zero")
     private BigDecimal startingPrice;
 
-    @DecimalMin(value = "0.01", message = "Starting price must be greater than zero")
+    @DecimalMin(value = "0.01", message = "Reserve price must be greater than zero")
     private BigDecimal reservePrice;
 
-    @DecimalMin(value = "0.01", message = "Starting price must be greater than zero")
+    @DecimalMin(value = "0.01", message = "Buy Now price must be greater than zero")
     private BigDecimal buyNowPrice;
 
     private Long categoryId;
