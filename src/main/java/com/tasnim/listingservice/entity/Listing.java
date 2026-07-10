@@ -20,7 +20,7 @@ public class Listing {
     private String title;
     private String description;
     private Long category;
-    private String condition;
+    private String listingCondition;
     private String sellerId;
     @Column(precision = 19, scale = 2)
     private BigDecimal startingPrice;
@@ -28,6 +28,7 @@ public class Listing {
     private BigDecimal reservePrice;
     @Column(precision = 19, scale = 2)
     private BigDecimal buyNowPrice;
+    @Enumerated(EnumType.STRING)
     private ListingStatus status;
     private Instant auctionStartTime;
     private Instant auctionEndTime;
