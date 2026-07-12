@@ -18,5 +18,5 @@ public class ListingImage {
     private long id;
     private long listingId;
     private String imageUrl;
-    private int displayOrder;
+    private Integer displayOrder;
 }

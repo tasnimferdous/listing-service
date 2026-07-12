@@ -13,7 +13,7 @@ import java.util.List;
 @NoArgsConstructor
 public class ListingDetailsResponse {
     private Long id;
-    private Long categoryId;
+    private String category;
     private String title;
     private String description;
     private String condition;

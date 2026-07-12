@@ -8,75 +8,46 @@ import com.tasnim.listingservice.dtos.request.ListingCreateRequest;
 import com.tasnim.listingservice.dtos.request.ListingUpdateRequest;
 import com.tasnim.listingservice.dtos.response.ListingDetailsResponse;
 import com.tasnim.listingservice.dtos.response.ListingResponse;
+import com.tasnim.listingservice.entity.Category;
 import com.tasnim.listingservice.entity.Listing;
-import com.tasnim.listingservice.entity.ListingImage;
 import com.tasnim.listingservice.enums.ListingStatus;
-import com.tasnim.listingservice.repository.CategoryRepository;
-import com.tasnim.listingservice.repository.ListingImageRepository;
 import com.tasnim.listingservice.repository.ListingRepository;
+import com.tasnim.listingservice.service.CategoryService;
+import com.tasnim.listingservice.service.ListingImageService;
 import com.tasnim.listingservice.service.ListingService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.util.ArrayList;
 import java.util.List;
 
-import static com.tasnim.listingservice.utils.PublicUtil.isNullOrEmpty;
+import static com.tasnim.commonlibrary.utils.PublicUtil.isNullOrEmpty;
 
 @Slf4j
 @Service
 @Transactional
 public class ListingServiceImpl implements ListingService {
     private final ListingRepository listingRepository;
-    private final CategoryRepository categoryRepository;
-    private final ListingImageRepository listingImageRepository;
+    private final ListingImageService listingImageService;
+    private final CategoryService categoryService;
 
-    public ListingServiceImpl(ListingRepository listingRepository, CategoryRepository categoryRepository, ListingImageRepository listingImageRepository) {
+    public ListingServiceImpl(ListingRepository listingRepository, ListingImageService listingImageService, CategoryService categoryService) {
         this.listingRepository = listingRepository;
-        this.categoryRepository = categoryRepository;
-        this.listingImageRepository = listingImageRepository;
+        this.listingImageService = listingImageService;
+        this.categoryService = categoryService;
     }
 
     @Override
     public ListingResponse createListing(ListingCreateRequest request) {
         log.info("Creating listing with title={}", request.getTitle());
 
-        validateCategory(request.getCategoryId());
+        categoryService.validateCategory(request.getCategoryId());
         Listing listing = buildListing(request);
         listing = listingRepository.save(listing);
-        storeListingImages(request.getImageUrls(), listing.getId());
+        listingImageService.storeListingImages(request.getImageUrls(), listing.getId());
         log.info("Listing created successfully. id={}", listing.getId());
 
         return mapToListingResponse(listing);
-    }
-
-    private void storeListingImages(List<String> imageUrls, Long listingId) {
-        log.info("Storing listing image for listingId={}", listingId);
-
-        List<ListingImage> images = new ArrayList<>();
-        for (int i = 0; i < imageUrls.size(); i++) {
-            images.add(
-                    ListingImage.builder()
-                            .listingId(listingId)
-                            .imageUrl(imageUrls.get(i))
-                            .displayOrder(i + 1)
-                            .build()
-            );
-        }
-
-        listingImageRepository.saveAll(images);
-    }
-
-    private void validateCategory(Long categoryId) {
-        if (!categoryRepository.existsById(categoryId)) {
-            throw new ResourceNotFoundException(
-                    "Category not found with id: " + categoryId);
-        }
     }
 
     private Listing buildListing(ListingCreateRequest request) {
@@ -87,7 +58,7 @@ public class ListingServiceImpl implements ListingService {
                 .startingPrice(request.getStartingPrice())
                 .reservePrice(request.getReservePrice())
                 .buyNowPrice(request.getBuyNowPrice())
-                .category(request.getCategoryId())
+                .categoryId(request.getCategoryId())
                 .status(ListingStatus.PENDING_APPROVAL)
                 .sellerId(SecurityUtil.getCurrentUserId())
                 .build();
@@ -111,15 +82,15 @@ public class ListingServiceImpl implements ListingService {
 
     private void updateListingImages(Long listingId, List<String> imageUrls) {
         if (imageUrls == null || imageUrls.isEmpty()) return;
-        deleteListingImages(listingId);
-        storeListingImages(imageUrls, listingId);
+        listingImageService.deleteImagesByListingId(listingId);
+        listingImageService.storeListingImages(imageUrls, listingId);
     }
 
     private void validateListingEditable(ListingUpdateRequest request, Listing listing, String sellerId) {
         validateStatus(listing);
         validateOwnership(listing, sellerId);
         if(request.getCategoryId() != null) {
-            validateCategory(request.getCategoryId());
+            categoryService.validateCategory(request.getCategoryId());
         }
     }
 
@@ -137,7 +108,7 @@ public class ListingServiceImpl implements ListingService {
         listing.setStartingPrice(request.getStartingPrice() == null ? listing.getStartingPrice() : request.getStartingPrice());
         listing.setReservePrice(request.getReservePrice() == null ? listing.getReservePrice() : request.getReservePrice());
         listing.setBuyNowPrice(request.getBuyNowPrice() == null ? listing.getBuyNowPrice() : request.getBuyNowPrice());
-        listing.setCategory(request.getCategoryId() ==  null ? listing.getCategory() : request.getCategoryId());
+        listing.setCategoryId(request.getCategoryId() ==  null ? listing.getCategoryId() : request.getCategoryId());
     }
 
     private Listing getListing(Long listingId) {
@@ -155,35 +126,10 @@ public class ListingServiceImpl implements ListingService {
 
         Listing listing = getListing(listingId);
         validateListingDeletion(listing,  sellerId);
-        deleteListingImages(listingId);
+        listingImageService.deleteImagesByListingId(listingId);
         listingRepository.delete(listing);
 
         log.info("Listing deleted successfully. id={}", listingId);
-    }
-
-    private void deleteListingImages(Long listingId) {
-        log.info("Deleting images for listingId={}", listingId);
-
-        List<ListingImage> images = listingImageRepository.findByListingId(listingId);
-        if (images == null || images.isEmpty())  return;
-        deletePhysicalImages(images);
-        listingImageRepository.deleteByListingId(listingId);
-
-        log.info("Images deleted for listingId={}", listingId);
-    }
-
-    private void deletePhysicalImages(List<ListingImage> images) {
-        for (ListingImage image : images) {
-            try {
-                String fileName = image.getImageUrl().replace("/uploads/", "");
-                Path filePath = Paths.get("uploads").resolve(fileName);
-                Files.deleteIfExists(filePath);
-            } catch (IOException ex) {
-                log.error(
-                        "Failed to delete image. url={}",
-                        image.getImageUrl(), ex);
-            }
-        }
     }
 
     private void validateListingDeletion(Listing listing, String sellerId) {
@@ -192,7 +138,7 @@ public class ListingServiceImpl implements ListingService {
     }
 
     private void validateStatus(Listing listing) {
-        if (ListingStatus.ACTIVE.equals(listing.getStatus()) ||
+        if (ListingStatus.LIVE.equals(listing.getStatus()) ||
                 ListingStatus.ENDED.equals(listing.getStatus())) {
             throw new BusinessException(
                     "Listing cannot be updated or deleted in current status");
@@ -217,6 +163,9 @@ public class ListingServiceImpl implements ListingService {
                 .id(listing.getId())
                 .title(listing.getTitle())
                 .status(listing.getStatus())
+                .startingPrice(listing.getStartingPrice())
+                .reservePrice(listing.getReservePrice())
+                .buyNowPrice(listing.getBuyNowPrice())
                 .build();
     }
 
@@ -231,17 +180,22 @@ public class ListingServiceImpl implements ListingService {
     }
 
     private ListingDetailsResponse mapToListingDetailsResponse(Listing listing) {
-        //get and set images
+        List<String> imageUrls = listingImageService
+                .findImagesByListingIdInOrder(listing.getId());
+        Category category = categoryService
+                .getCategoryById(listing.getCategoryId());
+
         return ListingDetailsResponse.builder()
                 .id(listing.getId())
                 .title(listing.getTitle())
                 .description(listing.getDescription())
                 .condition(listing.getListingCondition())
-                .categoryId(listing.getCategory())
+                .category(category == null? "Uncategorized" : category.getName())
                 .startingPrice(listing.getStartingPrice())
                 .reservePrice(listing.getReservePrice())
                 .buyNowPrice(listing.getBuyNowPrice())
                 .status(listing.getStatus())
+                .images(imageUrls)
                 .build();
     }
 }

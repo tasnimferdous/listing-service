@@ -10,5 +10,7 @@ import java.util.List;
 public interface ListingImageRepository extends JpaRepository<ListingImage, Long> {
     List<ListingImage> findByListingId(Long listingId);
 
+    List<ListingImage> findByListingIdOrderByDisplayOrderAsc(Long listingId);
+
     void deleteByListingId(Long listingId);
 }

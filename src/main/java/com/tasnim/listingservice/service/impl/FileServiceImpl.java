@@ -4,6 +4,7 @@ import com.tasnim.commonlibrary.exceptions.BadRequestException;
 import com.tasnim.commonlibrary.exceptions.BusinessException;
 import com.tasnim.commonlibrary.utils.SecurityUtil;
 import com.tasnim.listingservice.service.FileService;
+import com.tasnim.listingservice.utils.Constants;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
@@ -15,7 +16,6 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.time.Instant;
 import java.util.List;
-import java.util.Set;
 
 @Service
 @Slf4j
@@ -24,12 +24,6 @@ public class FileServiceImpl implements FileService {
     private long MAX_FILE_SIZE;
     @Value("${file.max-uploads:2}")
     private int MAX_UPLOADS;
-    private static final Set<String> ALLOWED_TYPES =
-            Set.of(
-                    "image/jpeg",
-                    "image/png",
-                    "image/webp"
-            );
 
     @Override
     public List<String> uploadImages(List<MultipartFile> files) {
@@ -88,7 +82,7 @@ public class FileServiceImpl implements FileService {
                     "File size exceeds 5 MB");
         }
 
-        if (!ALLOWED_TYPES.contains(file.getContentType())) {
+        if (!Constants.ALLOWED_TYPES.contains(file.getContentType())) {
             throw new BadRequestException(
                     "Unsupported file type");
         }
