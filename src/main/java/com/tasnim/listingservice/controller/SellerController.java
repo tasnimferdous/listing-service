@@ -4,6 +4,7 @@ import com.tasnim.commonlibrary.model.CommonResponse;
 import com.tasnim.commonlibrary.utils.ResponseUtil;
 import com.tasnim.listingservice.dtos.request.ListingCreateRequest;
 import com.tasnim.listingservice.dtos.request.ListingUpdateRequest;
+import com.tasnim.listingservice.dtos.response.ListingDetailsResponse;
 import com.tasnim.listingservice.dtos.response.ListingResponse;
 import com.tasnim.listingservice.service.ListingService;
 import jakarta.validation.Valid;
@@ -51,5 +52,12 @@ public class SellerController {
     public CommonResponse<List<ListingResponse>> getMyListings() {
         List<ListingResponse> responses = listingService.getMyListings();
         return ResponseUtil.success(responses, "Listings retrieved successfully");
+    }
+
+    @GetMapping("/{id}")
+    @PreAuthorize("hasRole('SELLER')")
+    public CommonResponse<ListingDetailsResponse> getListingDetails(@PathVariable Long id) {
+        ListingDetailsResponse response = listingService.getListingDetails(id);
+        return ResponseUtil.success(response, "Listing Details retrieved successfully");
     }
 }

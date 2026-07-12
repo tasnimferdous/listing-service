@@ -8,6 +8,14 @@ import java.math.BigDecimal;
 import java.time.Instant;
 
 @Entity
+@Table(
+        indexes = {
+                @Index(name = "idx_listing_seller_id", columnList = "sellerId"),
+                @Index(name = "idx_listing_status", columnList = "status"),
+                @Index(name = "idx_listing_category_id", columnList = "categoryId"),
+                @Index(name = "idx_listing_status_category", columnList = "status, categoryId")
+        }
+)
 @Getter
 @Setter
 @Builder
@@ -19,7 +27,7 @@ public class Listing {
     private Long id;
     private String title;
     private String description;
-    private Long category;
+    private Long categoryId;
     private String listingCondition;
     private String sellerId;
     @Column(precision = 19, scale = 2)
