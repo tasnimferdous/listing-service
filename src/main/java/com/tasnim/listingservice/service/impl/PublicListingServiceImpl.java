@@ -7,6 +7,7 @@ import com.tasnim.listingservice.dtos.response.ListingResponse;
 import com.tasnim.listingservice.entity.Category;
 import com.tasnim.listingservice.entity.Listing;
 import com.tasnim.listingservice.enums.ListingStatus;
+import com.tasnim.listingservice.mapper.ListingMapper;
 import com.tasnim.listingservice.repository.ListingRepository;
 import com.tasnim.listingservice.service.CategoryService;
 import com.tasnim.listingservice.service.ListingImageService;
@@ -16,11 +17,12 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
-import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+
+import static com.tasnim.listingservice.utils.ListingUtil.*;
 
 @Service
 @Slf4j
@@ -29,15 +31,17 @@ public class PublicListingServiceImpl implements PublicListingService {
     private final ListingRepository listingRepository;
     private final CategoryService categoryService;
     private final ListingImageService listingImageService;
+    private final ListingMapper listingMapper;
 
     public PublicListingServiceImpl(
             ListingRepository listingRepository,
             CategoryService categoryService,
-            ListingImageService listingImageService) {
+            ListingImageService listingImageService, ListingMapper listingMapper) {
 
         this.listingRepository = listingRepository;
         this.categoryService = categoryService;
         this.listingImageService = listingImageService;
+        this.listingMapper = listingMapper;
     }
 
     @Override
@@ -53,12 +57,12 @@ public class PublicListingServiceImpl implements PublicListingService {
 
             return listingRepository
                     .findByStatus(status, pageable)
-                    .map(this::mapToListingResponse);
+                    .map(listingMapper::toListingResponse);
         }
 
         return listingRepository
                 .findByStatus(ListingStatus.LIVE, pageable)
-                .map(this::mapToListingResponse);
+                .map(listingMapper::toListingResponse);
     }
 
     @Override
@@ -67,8 +71,12 @@ public class PublicListingServiceImpl implements PublicListingService {
 
         Listing listing = getListing(listingId);
         validatePublicVisibility(listing);
+        List<String> imageUrls = listingImageService
+                .findImagesByListingIdInOrder(listing.getId());
+        Category category = categoryService
+                .getCategoryById(listing.getCategoryId());
 
-        return mapToListingDetailsResponse(listing);
+        return listingMapper.toListingDetailsResponse(listing, category.getName(), imageUrls);
     }
 
     @Override
@@ -86,7 +94,7 @@ public class PublicListingServiceImpl implements PublicListingService {
                             categoryId,
                             status,
                             pageable)
-                    .map(this::mapToListingResponse);
+                    .map(listingMapper::toListingResponse);
         }
 
         return listingRepository
@@ -94,7 +102,7 @@ public class PublicListingServiceImpl implements PublicListingService {
                         categoryId,
                         ListingStatus.LIVE,
                         pageable)
-                .map(this::mapToListingResponse);
+                .map(listingMapper::toListingResponse);
     }
 
     @Override
@@ -114,7 +122,7 @@ public class PublicListingServiceImpl implements PublicListingService {
                             status,
                             pageable
                     )
-                    .map(this::mapToListingResponse);
+                    .map(listingMapper::toListingResponse);
         }
 
         return listingRepository
@@ -126,50 +134,7 @@ public class PublicListingServiceImpl implements PublicListingService {
                         ),
                         pageable
                 )
-                .map(this::mapToListingResponse);
-    }
-
-    private Pageable buildPageable(int page, int size, String sortBy, String direction) {
-        Sort sort = Sort.by(sortBy);
-        sort = "desc".equalsIgnoreCase(direction)
-                ? sort.descending()
-                : sort.ascending();
-
-        return PageRequest.of(page, size, sort);
-    }
-
-    private void validateSorting(String sortBy, String direction) {
-        if (!"asc".equalsIgnoreCase(direction)
-                && !"desc".equalsIgnoreCase(direction)) {
-            throw new BadRequestException(
-                    "Invalid sort direction");
-        }
-
-        if (!Constants.ALLOWED_SORT_FIELDS.contains(sortBy)) {
-            throw new BadRequestException(
-                    "Invalid sort field: " + sortBy);
-        }
-    }
-
-    private String validateKeyword(String keyword) {
-        if (keyword == null) {
-            throw new BadRequestException(
-                    "Keyword cannot be empty");
-        }
-
-        keyword = keyword.trim();
-
-        if (keyword.isBlank()) {
-            throw new BadRequestException(
-                    "Keyword cannot be empty");
-        }
-
-        if (keyword.length() > 100) {
-            throw new BadRequestException(
-                    "Keyword is too long");
-        }
-
-        return keyword;
+                .map(listingMapper::toListingResponse);
     }
 
     private Listing getListing(Long listingId) {
@@ -186,42 +151,25 @@ public class PublicListingServiceImpl implements PublicListingService {
         }
     }
 
-    private ListingResponse mapToListingResponse(Listing listing) {
-        return ListingResponse.builder()
-                .id(listing.getId())
-                .title(listing.getTitle())
-                .status(listing.getStatus())
-                .startingPrice(listing.getStartingPrice())
-                .reservePrice(listing.getReservePrice())
-                .buyNowPrice(listing.getBuyNowPrice())
-                .build();
-    }
-
-    private ListingDetailsResponse mapToListingDetailsResponse(Listing listing) {
-        List<String> imageUrls = listingImageService
-                .findImagesByListingIdInOrder(listing.getId());
-
-        Category category = categoryService
-                .getCategoryById(listing.getCategoryId());
-
-        return ListingDetailsResponse.builder()
-                .id(listing.getId())
-                .title(listing.getTitle())
-                .description(listing.getDescription())
-                .condition(listing.getListingCondition())
-                .category(category == null ? "Uncategorized" : category.getName())
-                .startingPrice(listing.getStartingPrice())
-                .reservePrice(listing.getReservePrice())
-                .buyNowPrice(listing.getBuyNowPrice())
-                .status(listing.getStatus())
-                .images(imageUrls)
-                .build();
-    }
-
     private void validateStatusFilter(ListingStatus status) {
         if (!Constants.PUBLIC_STATUSES.contains(status)) {
             throw new BadRequestException(
                     "Invalid status filter");
         }
+    }
+
+    private String validateKeyword(String keyword) {
+        if (keyword == null) {
+            throw new BadRequestException("Keyword cannot be empty");
+        }
+        keyword = keyword.trim();
+        if (keyword.isBlank()) {
+            throw new BadRequestException("Keyword cannot be empty");
+        }
+        if (keyword.length() > 100) {
+            throw new BadRequestException("Keyword is too long");
+        }
+
+        return keyword;
     }
 }

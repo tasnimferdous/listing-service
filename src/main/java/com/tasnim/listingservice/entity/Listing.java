@@ -10,10 +10,14 @@ import java.time.Instant;
 @Entity
 @Table(
         indexes = {
+
                 @Index(name = "idx_listing_seller_id", columnList = "sellerId"),
                 @Index(name = "idx_listing_status", columnList = "status"),
                 @Index(name = "idx_listing_category_id", columnList = "categoryId"),
-                @Index(name = "idx_listing_status_category", columnList = "status, categoryId")
+                @Index(name = "idx_listing_status_category", columnList = "status, categoryId"),
+                @Index(name = "idx_listing_seller_status", columnList = "sellerId, status"),
+                @Index(name = "idx_listing_status_start_time", columnList = "status, auctionStartTime"),
+                @Index(name = "idx_listing_status_end_time", columnList = "status, auctionEndTime")
         }
 )
 @Getter
@@ -44,6 +48,13 @@ public class Listing {
     private Instant createdAt;
     @Column(nullable = false)
     private Instant updatedAt;
+
+//    --- Admin Part ---
+    private String approvedBy;
+    private Instant approvedAt;
+    private String rejectedBy;
+    private Instant rejectedAt;
+    private String rejectionReason;
 
     @PrePersist
     public void prePersist() {

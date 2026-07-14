@@ -10,11 +10,12 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.util.Collection;
-import java.util.List;
 
 @Repository
 public interface ListingRepository extends JpaRepository<Listing, Long> {
-    List<Listing> findBySellerId(String sellerId);
+    Page<Listing> findBySellerId(String sellerId,  Pageable pageable);
+
+    Page<Listing> findBySellerIdAndStatus(String sellerId, ListingStatus status, Pageable pageable);
 
     Page<Listing> findByStatus(ListingStatus status, Pageable pageable);
 
