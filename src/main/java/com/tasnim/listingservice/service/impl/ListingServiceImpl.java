@@ -11,17 +11,21 @@ import com.tasnim.listingservice.dtos.response.ListingResponse;
 import com.tasnim.listingservice.entity.Category;
 import com.tasnim.listingservice.entity.Listing;
 import com.tasnim.listingservice.enums.ListingStatus;
+import com.tasnim.listingservice.mapper.ListingMapper;
 import com.tasnim.listingservice.repository.ListingRepository;
 import com.tasnim.listingservice.service.CategoryService;
 import com.tasnim.listingservice.service.ListingImageService;
 import com.tasnim.listingservice.service.ListingService;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 
 import static com.tasnim.commonlibrary.utils.PublicUtil.isNullOrEmpty;
+import static com.tasnim.listingservice.utils.ListingUtil.*;
 
 @Slf4j
 @Service
@@ -30,11 +34,13 @@ public class ListingServiceImpl implements ListingService {
     private final ListingRepository listingRepository;
     private final ListingImageService listingImageService;
     private final CategoryService categoryService;
+    private final ListingMapper listingMapper;
 
-    public ListingServiceImpl(ListingRepository listingRepository, ListingImageService listingImageService, CategoryService categoryService) {
+    public ListingServiceImpl(ListingRepository listingRepository, ListingImageService listingImageService, CategoryService categoryService, ListingMapper listingMapper) {
         this.listingRepository = listingRepository;
         this.listingImageService = listingImageService;
         this.categoryService = categoryService;
+        this.listingMapper = listingMapper;
     }
 
     @Override
@@ -47,21 +53,7 @@ public class ListingServiceImpl implements ListingService {
         listingImageService.storeListingImages(request.getImageUrls(), listing.getId());
         log.info("Listing created successfully. id={}", listing.getId());
 
-        return mapToListingResponse(listing);
-    }
-
-    private Listing buildListing(ListingCreateRequest request) {
-        return Listing.builder()
-                .title(request.getTitle())
-                .description(request.getDescription())
-                .listingCondition(request.getCondition().toString())
-                .startingPrice(request.getStartingPrice())
-                .reservePrice(request.getReservePrice())
-                .buyNowPrice(request.getBuyNowPrice())
-                .categoryId(request.getCategoryId())
-                .status(ListingStatus.PENDING_APPROVAL)
-                .sellerId(SecurityUtil.getCurrentUserId())
-                .build();
+        return listingMapper.toListingResponse(listing);
     }
 
     @Override
@@ -77,7 +69,75 @@ public class ListingServiceImpl implements ListingService {
 
         log.info("Listing updated successfully. id={}", listingId);
 
-        return mapToListingResponse(listing);
+        return listingMapper.toListingResponse(listing);
+    }
+
+    @Override
+    public void deleteListing(Long listingId) {
+        String sellerId = SecurityUtil.getCurrentUserId();
+        log.info("Deleting listing. id={}, sellerId={}", listingId, sellerId);
+
+        Listing listing = getListing(listingId);
+        validateListingDeletion(listing,  sellerId);
+        listingImageService.deleteImagesByListingId(listingId);
+        listingRepository.delete(listing);
+
+        log.info("Listing deleted successfully. id={}", listingId);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Page<ListingResponse> getMyListings(ListingStatus status, int page, int size, String sortBy, String direction) {
+        String sellerId = SecurityUtil.getCurrentUserId();
+
+        log.info("Fetching seller listings. sellerId={}, status={}, page={}, size={}, sortBy={}, direction={}",
+                sellerId, status, page, size, sortBy, direction);
+
+        validateSorting(sortBy, direction);
+        Pageable pageable = buildPageable(page, size, sortBy, direction);
+
+        if (status != null) {
+            return listingRepository
+                    .findBySellerIdAndStatus(
+                            sellerId,
+                            status,
+                            pageable)
+                    .map(listingMapper::toListingResponse);
+        }
+
+        return listingRepository
+                .findBySellerId(
+                        sellerId,
+                        pageable)
+                .map(listingMapper::toListingResponse);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public ListingDetailsResponse getListingDetails(Long listingId) {
+        log.info("Fetching listing details. id={}", listingId);
+
+        Listing listing = getListing(listingId);
+        List<String> imageUrls = listingImageService
+                .findImagesByListingIdInOrder(listing.getId());
+        Category category = categoryService
+                .getCategoryById(listing.getCategoryId());
+
+        return listingMapper.toListingDetailsResponse(listing, category.getName(), imageUrls);
+    }
+
+    private Listing buildListing(ListingCreateRequest request) {
+        return Listing.builder()
+                .title(request.getTitle())
+                .description(request.getDescription())
+                .listingCondition(request.getCondition().toString())
+                .startingPrice(request.getStartingPrice())
+                .reservePrice(request.getReservePrice())
+                .buyNowPrice(request.getBuyNowPrice())
+                .categoryId(request.getCategoryId())
+                .status(ListingStatus.PENDING)
+                .sellerId(SecurityUtil.getCurrentUserId())
+                .build();
     }
 
     private void updateListingImages(Long listingId, List<String> imageUrls) {
@@ -119,19 +179,6 @@ public class ListingServiceImpl implements ListingService {
                         ));
     }
 
-    @Override
-    public void deleteListing(Long listingId) {
-        String sellerId = SecurityUtil.getCurrentUserId();
-        log.info("Deleting listing. id={}, sellerId={}", listingId, sellerId);
-
-        Listing listing = getListing(listingId);
-        validateListingDeletion(listing,  sellerId);
-        listingImageService.deleteImagesByListingId(listingId);
-        listingRepository.delete(listing);
-
-        log.info("Listing deleted successfully. id={}", listingId);
-    }
-
     private void validateListingDeletion(Listing listing, String sellerId) {
         validateStatus(listing);
         validateOwnership(listing, sellerId);
@@ -143,59 +190,5 @@ public class ListingServiceImpl implements ListingService {
             throw new BusinessException(
                     "Listing cannot be updated or deleted in current status");
         }
-    }
-
-    @Override
-    @Transactional(readOnly = true)
-    public List<ListingResponse> getMyListings() {
-        String sellerId = SecurityUtil.getCurrentUserId();
-
-        log.info("Fetching listings for seller={}", sellerId);
-
-        return listingRepository.findBySellerId(sellerId)
-                .stream()
-                .map(this::mapToListingResponse)
-                .toList();
-    }
-
-    private ListingResponse mapToListingResponse(Listing listing) {
-        return ListingResponse.builder()
-                .id(listing.getId())
-                .title(listing.getTitle())
-                .status(listing.getStatus())
-                .startingPrice(listing.getStartingPrice())
-                .reservePrice(listing.getReservePrice())
-                .buyNowPrice(listing.getBuyNowPrice())
-                .build();
-    }
-
-    @Override
-    @Transactional(readOnly = true)
-    public ListingDetailsResponse getListingDetails(Long listingId) {
-        log.info("Fetching listing details. id={}", listingId);
-
-        Listing listing = getListing(listingId);
-
-        return mapToListingDetailsResponse(listing);
-    }
-
-    private ListingDetailsResponse mapToListingDetailsResponse(Listing listing) {
-        List<String> imageUrls = listingImageService
-                .findImagesByListingIdInOrder(listing.getId());
-        Category category = categoryService
-                .getCategoryById(listing.getCategoryId());
-
-        return ListingDetailsResponse.builder()
-                .id(listing.getId())
-                .title(listing.getTitle())
-                .description(listing.getDescription())
-                .condition(listing.getListingCondition())
-                .category(category == null? "Uncategorized" : category.getName())
-                .startingPrice(listing.getStartingPrice())
-                .reservePrice(listing.getReservePrice())
-                .buyNowPrice(listing.getBuyNowPrice())
-                .status(listing.getStatus())
-                .images(imageUrls)
-                .build();
     }
 }

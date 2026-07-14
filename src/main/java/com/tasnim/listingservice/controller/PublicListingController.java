@@ -6,9 +6,12 @@ import com.tasnim.listingservice.dtos.response.ListingDetailsResponse;
 import com.tasnim.listingservice.dtos.response.ListingResponse;
 import com.tasnim.listingservice.enums.ListingStatus;
 import com.tasnim.listingservice.service.PublicListingService;
+import jakarta.validation.constraints.Min;
 import org.springframework.data.domain.Page;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
+@Validated
 @RestController
 @RequestMapping("/api/v1/public/listings")
 public class PublicListingController {
@@ -22,8 +25,8 @@ public class PublicListingController {
     @GetMapping
     public CommonResponse<Page<ListingResponse>> getListings(
             @RequestParam(required = false) ListingStatus status,
-            @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "10") int size,
+            @RequestParam(defaultValue = "0") @Min(0) int page,
+            @RequestParam(defaultValue = "10") @Min(1) int size,
             @RequestParam(defaultValue = "createdAt") String sortBy,
             @RequestParam(defaultValue = "desc") String direction) {
         Page<ListingResponse> response =
@@ -44,8 +47,8 @@ public class PublicListingController {
     public CommonResponse<Page<ListingResponse>> getListingsByCategory(
             @PathVariable Long categoryId,
             @RequestParam(required = false) ListingStatus status,
-            @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "10") int size) {
+            @RequestParam(defaultValue = "0") @Min(0) int page,
+            @RequestParam(defaultValue = "10") @Min(1) int size) {
         Page<ListingResponse> response =
                 publicListingService.getListingsByCategory(categoryId, status, page, size);
 
@@ -56,8 +59,8 @@ public class PublicListingController {
     public CommonResponse<Page<ListingResponse>> searchListings(
             @RequestParam String keyword,
             @RequestParam(required = false) ListingStatus status,
-            @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "10") int size) {
+            @RequestParam(defaultValue = "0") @Min(0) int page,
+            @RequestParam(defaultValue = "10") @Min(1) int size) {
         Page<ListingResponse> response =
                 publicListingService.searchListings(keyword, status, page, size);
 

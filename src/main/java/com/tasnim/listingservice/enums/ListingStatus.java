@@ -2,9 +2,9 @@ package com.tasnim.listingservice.enums;
 
 public enum ListingStatus {
     DRAFT,
-    PENDING_APPROVAL,
+    PENDING,
     SCHEDULED,
     LIVE,
     ENDED,
-    CANCELLED
+    REJECTED,
 }
