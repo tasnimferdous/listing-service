@@ -9,17 +9,21 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+import java.time.Instant;
 import java.util.Collection;
 
 @Repository
 public interface ListingRepository extends JpaRepository<Listing, Long> {
     Page<Listing> findBySellerId(String sellerId,  Pageable pageable);
 
-    Page<Listing> findBySellerIdAndStatus(String sellerId, ListingStatus status, Pageable pageable);
+    Page<Listing> findBySellerIdAndStatus(
+            String sellerId, ListingStatus status, Pageable pageable);
 
-    Page<Listing> findByStatus(ListingStatus status, Pageable pageable);
+    Page<Listing> findByStatus(
+            ListingStatus status, Pageable pageable);
 
-    Page<Listing> findByCategoryIdAndStatus(Long categoryId, ListingStatus status, Pageable pageable);
+    Page<Listing> findByCategoryIdAndStatus(
+            Long categoryId, ListingStatus status, Pageable pageable);
 
     @Query("""
        SELECT l
@@ -30,7 +34,9 @@ public interface ListingRepository extends JpaRepository<Listing, Long> {
             OR LOWER(l.description) LIKE LOWER(CONCAT('%', :keyword, '%'))
        )
        """)
-    Page<Listing> searchListings(@Param("keyword") String keyword, @Param("status") ListingStatus status, Pageable pageable);
+    Page<Listing> searchListings(
+            @Param("keyword") String keyword,
+            @Param("status") ListingStatus status, Pageable pageable);
 
     @Query("""
        SELECT l
@@ -41,5 +47,13 @@ public interface ListingRepository extends JpaRepository<Listing, Long> {
             OR LOWER(l.description) LIKE LOWER(CONCAT('%', :keyword, '%'))
        )
        """)
-    Page<Listing> searchListings(@Param("keyword") String keyword, @Param("statuses") Collection<ListingStatus> statuses, Pageable pageable);
+    Page<Listing> searchListings(
+            @Param("keyword") String keyword,
+            @Param("statuses") Collection<ListingStatus> statuses, Pageable pageable);
+
+    Page<Listing> findByStatusAndAuctionStartTimeLessThanEqual(
+            ListingStatus status, Instant time, Pageable pageable);
+
+    Page<Listing> findByStatusAndAuctionEndTimeLessThanEqual(
+            ListingStatus status, Instant time, Pageable pageable);
 }
