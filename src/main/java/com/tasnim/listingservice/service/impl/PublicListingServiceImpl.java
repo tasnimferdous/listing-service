@@ -12,7 +12,6 @@ import com.tasnim.listingservice.repository.ListingRepository;
 import com.tasnim.listingservice.service.CategoryService;
 import com.tasnim.listingservice.service.ListingImageService;
 import com.tasnim.listingservice.service.PublicListingService;
-import com.tasnim.listingservice.utils.Constants;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -22,6 +21,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 
+import static com.tasnim.listingservice.utils.Constants.PUBLIC_STATUSES;
 import static com.tasnim.listingservice.utils.ListingUtil.*;
 
 @Service
@@ -145,14 +145,14 @@ public class PublicListingServiceImpl implements PublicListingService {
     }
 
     private void validatePublicVisibility(Listing listing) {
-        if (!Constants.PUBLIC_STATUSES.contains(listing.getStatus())) {
+        if (!PUBLIC_STATUSES.contains(listing.getStatus())) {
             throw new ResourceNotFoundException(
                     "Listing not found");
         }
     }
 
     private void validateStatusFilter(ListingStatus status) {
-        if (!Constants.PUBLIC_STATUSES.contains(status)) {
+        if (!PUBLIC_STATUSES.contains(status)) {
             throw new BadRequestException(
                     "Invalid status filter");
         }

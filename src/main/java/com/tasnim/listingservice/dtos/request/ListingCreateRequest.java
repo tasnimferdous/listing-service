@@ -8,6 +8,7 @@ import lombok.Getter;
 import lombok.Setter;
 
 import java.math.BigDecimal;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -44,4 +45,10 @@ public class ListingCreateRequest {
     @NotNull(message = "Image URLs are required")
     @Size(max = 10, message = "Maximum 10 images allowed")
     private List<String> imageUrls = new ArrayList<>();
+
+    @NotNull(message = "Auction start time is required")
+    private Instant auctionStartTime;
+
+    @NotNull(message = "Auction end time is required")
+    private Instant auctionEndTime;
 }

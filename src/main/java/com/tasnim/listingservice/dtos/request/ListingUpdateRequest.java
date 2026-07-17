@@ -9,6 +9,7 @@ import lombok.Getter;
 import lombok.Setter;
 
 import java.math.BigDecimal;
+import java.time.Instant;
 import java.util.List;
 
 @Getter
@@ -36,4 +37,8 @@ public class ListingUpdateRequest {
 
     @Size(max = 10, message = "Maximum 10 images allowed")
     private List<String> imageUrls;
+
+    private Instant auctionStartTime;
+
+    private Instant auctionEndTime;
 }
