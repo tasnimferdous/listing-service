@@ -64,7 +64,7 @@ public class ListingServiceImpl implements ListingService {
 
     @Override
     public ListingResponse updateListing(Long listingId, ListingUpdateRequest request) {
-        validateAuctionTime(request.getAuctionStartTime(), request.getAuctionEndTime());
+        validateAuctionTimeUpdate(request);
         String sellerId = SecurityUtil.getCurrentUserId();
         log.info("Updating listing. id={}, sellerId={}", listingId, sellerId);
 
@@ -176,6 +176,8 @@ public class ListingServiceImpl implements ListingService {
         listing.setReservePrice(request.getReservePrice() == null ? listing.getReservePrice() : request.getReservePrice());
         listing.setBuyNowPrice(request.getBuyNowPrice() == null ? listing.getBuyNowPrice() : request.getBuyNowPrice());
         listing.setCategoryId(request.getCategoryId() ==  null ? listing.getCategoryId() : request.getCategoryId());
+        listing.setAuctionStartTime(request.getAuctionStartTime() == null ? listing.getAuctionStartTime() : request.getAuctionStartTime());
+        listing.setAuctionEndTime(request.getAuctionEndTime() == null ? listing.getAuctionEndTime() : request.getAuctionEndTime());
     }
 
     private Listing getListing(Long listingId) {
@@ -196,6 +198,19 @@ public class ListingServiceImpl implements ListingService {
                 ListingStatus.ENDED.equals(listing.getStatus())) {
             throw new BusinessException(
                     "Listing cannot be updated or deleted in current status");
+        }
+    }
+
+    private void validateAuctionTimeUpdate(ListingUpdateRequest request) {
+        Instant startTime = request.getAuctionStartTime();
+        Instant endTime = request.getAuctionEndTime();
+
+        if ((startTime == null) != (endTime == null)) {
+            throw new BadRequestException(
+                    "Auction start time and end time must be provided together");
+        }
+        if (startTime != null) {
+            validateAuctionTime(startTime, endTime);
         }
     }
 
