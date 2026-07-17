@@ -1,5 +1,6 @@
 package com.tasnim.listingservice.service.impl;
 
+import com.tasnim.commonlibrary.exceptions.BadRequestException;
 import com.tasnim.commonlibrary.exceptions.BusinessException;
 import com.tasnim.commonlibrary.exceptions.ForbiddenException;
 import com.tasnim.commonlibrary.exceptions.ResourceNotFoundException;
@@ -22,9 +23,12 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Duration;
+import java.time.Instant;
 import java.util.List;
 
 import static com.tasnim.commonlibrary.utils.PublicUtil.isNullOrEmpty;
+import static com.tasnim.listingservice.utils.Constants.*;
 import static com.tasnim.listingservice.utils.ListingUtil.*;
 
 @Slf4j
@@ -45,6 +49,8 @@ public class ListingServiceImpl implements ListingService {
 
     @Override
     public ListingResponse createListing(ListingCreateRequest request) {
+        validateAuctionTime(request.getAuctionStartTime(), request.getAuctionEndTime());
+
         log.info("Creating listing with title={}", request.getTitle());
 
         categoryService.validateCategory(request.getCategoryId());
@@ -58,6 +64,7 @@ public class ListingServiceImpl implements ListingService {
 
     @Override
     public ListingResponse updateListing(Long listingId, ListingUpdateRequest request) {
+        validateAuctionTime(request.getAuctionStartTime(), request.getAuctionEndTime());
         String sellerId = SecurityUtil.getCurrentUserId();
         log.info("Updating listing. id={}, sellerId={}", listingId, sellerId);
 
@@ -189,6 +196,31 @@ public class ListingServiceImpl implements ListingService {
                 ListingStatus.ENDED.equals(listing.getStatus())) {
             throw new BusinessException(
                     "Listing cannot be updated or deleted in current status");
+        }
+    }
+
+    private void validateAuctionTime(Instant startTime, Instant endTime) {
+        Instant now = Instant.now();
+        if (!startTime.isAfter(now.plus(MIN_START_TIME_OFFSET))) {
+            throw new BadRequestException(
+                    "Auction start time must be at least %d minutes in the future"
+                            .formatted(MIN_START_TIME_OFFSET.toMinutes()));
+        }
+        if (!endTime.isAfter(startTime)) {
+            throw new BadRequestException(
+                    "Auction end time must be after auction start time");
+        }
+
+        Duration duration = Duration.between(startTime, endTime);
+        if (duration.compareTo(MIN_AUCTION_DURATION) < 0) {
+            throw new BadRequestException(
+                    "Auction duration must be at least %d hour(s)"
+                            .formatted(MIN_AUCTION_DURATION.toHours()));
+        }
+        if (duration.compareTo(MAX_AUCTION_DURATION) > 0) {
+            throw new BadRequestException(
+                    "Auction duration cannot exceed %d day(s)"
+                            .formatted(MAX_AUCTION_DURATION.toDays()));
         }
     }
 }

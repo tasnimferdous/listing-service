@@ -4,7 +4,6 @@ import com.tasnim.commonlibrary.exceptions.BadRequestException;
 import com.tasnim.commonlibrary.exceptions.BusinessException;
 import com.tasnim.commonlibrary.utils.SecurityUtil;
 import com.tasnim.listingservice.service.FileService;
-import com.tasnim.listingservice.utils.Constants;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
@@ -16,6 +15,8 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.time.Instant;
 import java.util.List;
+
+import static com.tasnim.listingservice.utils.Constants.ALLOWED_TYPES;
 
 @Service
 @Slf4j
@@ -82,7 +83,7 @@ public class FileServiceImpl implements FileService {
                     "File size exceeds 5 MB");
         }
 
-        if (!Constants.ALLOWED_TYPES.contains(file.getContentType())) {
+        if (!ALLOWED_TYPES.contains(file.getContentType())) {
             throw new BadRequestException(
                     "Unsupported file type");
         }

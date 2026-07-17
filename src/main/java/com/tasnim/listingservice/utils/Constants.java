@@ -2,6 +2,7 @@ package com.tasnim.listingservice.utils;
 
 import com.tasnim.listingservice.enums.ListingStatus;
 
+import java.time.Duration;
 import java.util.Set;
 
 public final class Constants {
@@ -28,4 +29,13 @@ public final class Constants {
                     "image/png",
                     "image/webp"
             );
+
+    public static final Duration MIN_START_TIME_OFFSET =
+            Duration.ofMinutes(5);
+
+    public static final Duration MIN_AUCTION_DURATION =
+            Duration.ofHours(1);
+
+    public static final Duration MAX_AUCTION_DURATION =
+            Duration.ofDays(30);
 }
