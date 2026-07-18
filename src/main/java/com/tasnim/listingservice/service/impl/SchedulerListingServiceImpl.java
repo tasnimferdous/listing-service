@@ -7,6 +7,7 @@ import com.tasnim.listingservice.service.SchedulerListingService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -29,7 +30,11 @@ public class SchedulerListingServiceImpl implements SchedulerListingService {
         Page<Listing> listings = listingRepository.findByStatusAndAuctionStartTimeLessThanEqual(
                     ListingStatus.SCHEDULED,
                     now,
-                    PageRequest.of(0, BATCH_SIZE));
+                    PageRequest.of(
+                            0,
+                            BATCH_SIZE,
+                            Sort.by("auctionStartTime").ascending()
+                    ));
 
         if (listings.isEmpty()) return;
         listings.forEach(this::startAuction);
@@ -43,7 +48,11 @@ public class SchedulerListingServiceImpl implements SchedulerListingService {
         Page<Listing> listings = listingRepository.findByStatusAndAuctionEndTimeLessThanEqual(
                     ListingStatus.LIVE,
                     now,
-                    PageRequest.of(0, BATCH_SIZE));
+                    PageRequest.of(
+                            0,
+                            BATCH_SIZE,
+                            Sort.by("auctionEndTime").ascending()
+                    ));
 
         if (listings.isEmpty()) return;
         listings.forEach(this::endAuction);

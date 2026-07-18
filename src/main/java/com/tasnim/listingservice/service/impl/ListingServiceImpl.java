@@ -218,8 +218,8 @@ public class ListingServiceImpl implements ListingService {
         Instant now = Instant.now();
         if (!startTime.isAfter(now.plus(MIN_START_TIME_OFFSET))) {
             throw new BadRequestException(
-                    "Auction start time must be at least %d minutes in the future"
-                            .formatted(MIN_START_TIME_OFFSET.toMinutes()));
+                    "Auction start time must be at least %d hour(s) in the future"
+                            .formatted(MIN_START_TIME_OFFSET.toHours()));
         }
         if (!endTime.isAfter(startTime)) {
             throw new BadRequestException(
