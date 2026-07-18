@@ -31,7 +31,7 @@ public final class Constants {
             );
 
     public static final Duration MIN_START_TIME_OFFSET =
-            Duration.ofMinutes(5);
+            Duration.ofHours(24);
 
     public static final Duration MIN_AUCTION_DURATION =
             Duration.ofHours(1);
